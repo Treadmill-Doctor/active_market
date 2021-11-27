@@ -83,7 +83,7 @@ module ActiveMarket
       # Send the request
       response = http.request(request)
       puts response.body
-      if response.code == 400 raise StandardError.new "Response: 400, body: #{response.body}"
+      raise StandardError.new "Response: 400, body: #{response.body}" if response.code == 400
       return JSON.parse(response.body)
     end
   end#end class ebay
