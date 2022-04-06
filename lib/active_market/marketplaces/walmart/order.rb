@@ -188,11 +188,7 @@ class ActiveMarket::Walmart
         orders = parse_orders_response(body)
       end
 
-      begin
-        return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders, next_page: (body["list"]["meta"]["nextCursor"] unless !success) }), {body: body, code: code})
-      rescue ActiveMarket::ResponseError => e
-        return ErrorHandler.new(e)
-      end
+      return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders, next_page: (body["list"]["meta"]["nextCursor"] unless !success) }), {body: body, code: code})
 
     end#end get_orders
 
