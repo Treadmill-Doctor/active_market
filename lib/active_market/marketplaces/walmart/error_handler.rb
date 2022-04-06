@@ -16,7 +16,8 @@ class ActiveMarket::Walmart
       end
 
       if @response_error.body.is_a?(Hash)
-      #return errors unless valid_json?(@response_error.body) && @response_error.body.has_key?("errors")
+        puts "WALMART ERROR: " + @response_error.body.to_s
+        #return errors unless valid_json?(@response_error.body) && @response_error.body.has_key?("errors")
         @response_error.body["errors"]["error"].each do |i|
           @response_error.messages << i["code"]
         end
