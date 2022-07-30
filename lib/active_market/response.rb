@@ -17,7 +17,7 @@ module ActiveMarket
 
       super(result)
 
-      raise ResponseError.new("Server response code: #{code}", {body: body, code: code}) unless success
+      raise ResponseError.new("(#{code}) #{body}", {body: body, code: code}) unless success
 
       @message = "Success"
     end
