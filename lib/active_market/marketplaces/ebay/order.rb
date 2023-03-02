@@ -1,20 +1,18 @@
+# frozen_string_literal: true
+
 class ActiveMarket::Ebay
   class Order < ActiveMarket::Ebay
+    SUCCESS_CODES = %w(200 201).freeze
 
     def initialize(creds)
       super(creds)
       @header = {
         'Content-Type' => 'application/json',
-        #'Accept': 'application/json',
         'Authorization' => "Bearer #{@token}"
       }
     end
 
-
-    SUCCESS_CODES = %w(200 201).freeze
-
     def get_orders(opts = {})
-
       if opts[:next_page]
         uri = URI.parse(opts[:next_page])
       else
@@ -41,6 +39,7 @@ class ActiveMarket::Ebay
       code = response.code
       success = response_success?(response)
       response = JSON.parse(response.body)
+
       orders = []
       if success
         orders = parse_orders_response(response)
@@ -48,15 +47,15 @@ class ActiveMarket::Ebay
 
       #returns decorated response
       begin
-        return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders, next_page: response["next"]}), {body: response, code: code})
+        return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders,
+                                                                          next_page: response["next"]}),
+                                          {body: response, code: code})
       rescue ActiveMarket::ResponseError => e
         return ErrorHandler.new(e)
       end
-
-    end#end get_orders
+    end
 
     def create_shipment(shipment)
-
       uri = URI.parse(@domain + "/sell/fulfillment/v1/order/#{shipment.order_number}/shipping_fulfillment")
       # Create the HTTP objects
       http = Net::HTTP.new(uri.host, uri.port)
@@ -79,7 +78,9 @@ class ActiveMarket::Ebay
       response = http.request(request)
 
       begin
-        return ActiveMarket::Response.new(ActiveMarket::CreateShipmentResult.new, {body: (JSON.parse(response.body) unless response.body.empty?) || nil, code: response.code})
+        return ActiveMarket::Response.new(ActiveMarket::CreateShipmentResult.new,
+                                          {body: (JSON.parse(response.body) unless response.body.empty?) || nil,
+                                           code: response.code})
       rescue ActiveMarket::ResponseError => e
         return ErrorHandler.new(e)
       end
@@ -101,19 +102,22 @@ class ActiveMarket::Ebay
       end
 
       begin
-        return ActiveMarket::Response.new(ActiveMarket::ShipmentsResult.new({shipments: shipments}), {body: body, code: response.code})
+        return ActiveMarket::Response.new(ActiveMarket::ShipmentsResult.new({shipments: shipments}),
+                                          {body: body, code: response.code})
       rescue ActiveMarket::ResponseError => e
         return ErrorHandler.new(e)
       end
     end
 
     private
+
     def response_success?(response)
-      return SUCCESS_CODES.include?(response.code)
+      SUCCESS_CODES.include?(response.code)
     end
 
     def parse_shipments_response(body)
       shipments = []
+
       body["fulfillments"].each do |i|
         shipments << {
           id: i["fulfillmentId"],
@@ -123,16 +127,17 @@ class ActiveMarket::Ebay
           service_code: i["shippingServiceCode"]
         }
       end
-      return shipments
+
+      shipments
     end
 
     def parse_orders_response(response)
       orders = []
 
-      response["orders"].each do |o|
+      response["orders"].each_with_index do |o, index|
         order = ActiveMarket::Order.new(marketplace: "Ebay")
 
-        if !["PAID", "FULLY_REFUNDED", "PARTIALLY_REFUNDED"].include? o["orderPaymentStatus"]
+        unless %w[PAID FULLY_REFUNDED PARTIALLY_REFUNDED].include? o['orderPaymentStatus']
           #go to the next iteration because we don't want unpurchased orders!!
           next
         end
@@ -146,7 +151,6 @@ class ActiveMarket::Ebay
         order.order_number = o["orderId"]
         order.created_at = Time.parse(o["creationDate"])
         order.ordered_at = Time.parse(o["creationDate"])
-
 
         order.cancelled = o["cancelStatus"]["cancelState"] == "CANCELLED"
         if order.cancelled
@@ -185,8 +189,8 @@ class ActiveMarket::Ebay
           if s.has_key?("shippingStep")
             shipping_step = s["shippingStep"]
             details = shipping_step["shipTo"]
-            name = details["fullName"].split(" ", 2)
-            contactAddress = details["contactAddress"]
+            name = details['fullName'] ? details['fullName'].split(" ", 2) : 'unknown'
+            contact_address = details["contactAddress"]
 
             order.shipping_method = shipping_step["shippingServiceCode"]
             order.addresses << {
@@ -195,12 +199,12 @@ class ActiveMarket::Ebay
               last_name: name.last,
               email: details["email"],
               telephone: (details["primaryPhone"]["phoneNumber"] if details.has_key?("primaryPhone")),
-              address1: contactAddress["addressLine1"],
-              address2: contactAddress["addressLine2"],
-              city: contactAddress["city"],
-              country: contactAddress["countryCode"],
-              state: contactAddress["stateOrProvince"],
-              postal_code: contactAddress["postalCode"]
+              address1: contact_address["addressLine1"],
+              address2: contact_address["addressLine2"],
+              city: contact_address["city"],
+              country: contact_address["countryCode"],
+              state: contact_address["stateOrProvince"],
+              postal_code: contact_address["postalCode"]
             }
             break #found shipping address info can now break
           end
@@ -210,7 +214,7 @@ class ActiveMarket::Ebay
         #response = get_shipments(order.order_number)
 
         if o["pricingSummary"].has_key?("deliveryDiscount")
-            order.shipping_discount = BigDecimal(o["pricingSummary"]["deliveryDiscount"]["value"].to_s)
+          order.shipping_discount = BigDecimal(o["pricingSummary"]["deliveryDiscount"]["value"].to_s)
         end
 
         #order.shipments = response.shipments
@@ -228,11 +232,9 @@ class ActiveMarket::Ebay
         order.grand_total = o["pricingSummary"]["total"]["value"]
 
         orders << order
+      end
 
-      end#end response["list"]["elements"]["order"]
-
-      return orders
-
+      orders
     end
   end
 end
