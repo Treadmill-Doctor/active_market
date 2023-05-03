@@ -189,7 +189,10 @@ class ActiveMarket::Ebay
           if s.has_key?("shippingStep")
             shipping_step = s["shippingStep"]
             details = shipping_step["shipTo"]
-            name = details['fullName'] ? details['fullName'].split(" ", 2) : 'unknown'
+
+            next unless details.present?
+
+            name = details['fullName'] ? details['fullName'].split(" ", 2) : %w(unknown)
             contact_address = details["contactAddress"]
 
             order.shipping_method = shipping_step["shippingServiceCode"]
